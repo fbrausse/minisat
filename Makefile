@@ -18,7 +18,7 @@ MINISAT_RELSYM ?= -g
 
 # Sets of compile flags for different build types
 MINISAT_REL    ?= -O3 -D NDEBUG
-MINISAT_DEB    ?= -O0 -D DEBUG 
+MINISAT_DEB    ?= -O0 -D DEBUG
 MINISAT_PRF    ?= -O3 -D NDEBUG
 MINISAT_FPIC   ?= -fpic
 
@@ -86,7 +86,7 @@ csh:	$(BUILD_DIR)/dynamic/bin/$(MINISAT_CORE)
 lr:	$(BUILD_DIR)/release/lib/$(MINISAT_SLIB)
 ld:	$(BUILD_DIR)/debug/lib/$(MINISAT_SLIB)
 lp:	$(BUILD_DIR)/profile/lib/$(MINISAT_SLIB)
-lsh:	$(BUILD_DIR)/dynamic/lib/$(MINISAT_DLIB).$(SOMAJOR).$(SOMINOR)$(SORELEASE)
+lsh:	$(BUILD_DIR)/dynamic/lib/$(MINISAT_DLIB)
 
 ## Build-type Compile-flags:
 $(BUILD_DIR)/release/%.o:			MINISAT_CXXFLAGS +=$(MINISAT_REL) $(MINISAT_RELSYM)
@@ -122,77 +122,77 @@ $(BUILD_DIR)/dynamic/lib/$(MINISAT_DLIB).$(SOMAJOR).$(SOMINOR)$(SORELEASE)\
  $(BUILD_DIR)/dynamic/lib/$(MINISAT_DLIB).$(SOMAJOR)\
  $(BUILD_DIR)/dynamic/lib/$(MINISAT_DLIB):	$(foreach o,$(OBJS),$(BUILD_DIR)/dynamic/$(o))
 
+$(BUILD_DIR)/release $(BUILD_DIR)/profile $(BUILD_DIR)/debug $(BUILD_DIR)/dynamic $(BUILD_DIR)/release/bin:
+	$(VERB) mkdir -p $@
+
+%/lib:
+	$(VERB) mkdir -p $@
+
 ## Compile rules (these should be unified, buit I have not yet found a way which works in GNU Make)
-$(BUILD_DIR)/release/%.o:	%.cc
+$(BUILD_DIR)/release/%.o:	%.cc | $(BUILD_DIR)/release
 	$(ECHO) Compiling: $@
-	$(VERB) mkdir -p $(dir $@)
 	$(VERB) $(CXX) $(MINISAT_CXXFLAGS) $(CXXFLAGS) -c -o $@ $< -MMD -MF $(BUILD_DIR)/release/$*.d
 
-$(BUILD_DIR)/profile/%.o:	%.cc
+$(BUILD_DIR)/profile/%.o:	%.cc | $(BUILD_DIR)/profile
 	$(ECHO) Compiling: $@
-	$(VERB) mkdir -p $(dir $@)
 	$(VERB) $(CXX) $(MINISAT_CXXFLAGS) $(CXXFLAGS) -c -o $@ $< -MMD -MF $(BUILD_DIR)/profile/$*.d
 
-$(BUILD_DIR)/debug/%.o:	%.cc
+$(BUILD_DIR)/debug/%.o:	%.cc | $(BUILD_DIR)/debug
 	$(ECHO) Compiling: $@
-	$(VERB) mkdir -p $(dir $@)
 	$(VERB) $(CXX) $(MINISAT_CXXFLAGS) $(CXXFLAGS) -c -o $@ $< -MMD -MF $(BUILD_DIR)/debug/$*.d
 
-$(BUILD_DIR)/dynamic/%.o:	%.cc
+$(BUILD_DIR)/dynamic/%.o:	%.cc | $(BUILD_DIR)/dynamic
 	$(ECHO) Compiling: $@
-	$(VERB) mkdir -p $(dir $@)
 	$(VERB) $(CXX) $(MINISAT_CXXFLAGS) $(CXXFLAGS) -c -o $@ $< -MMD -MF $(BUILD_DIR)/dynamic/$*.d
 
 ## Linking rule
 $(BUILD_DIR)/release/bin/$(MINISAT) $(BUILD_DIR)/debug/bin/$(MINISAT) $(BUILD_DIR)/profile/bin/$(MINISAT) $(BUILD_DIR)/dynamic/bin/$(MINISAT)\
-$(BUILD_DIR)/release/bin/$(MINISAT_CORE) $(BUILD_DIR)/debug/bin/$(MINISAT_CORE) $(BUILD_DIR)/profile/bin/$(MINISAT_CORE) $(BUILD_DIR)/dynamic/bin/$(MINISAT_CORE):
+$(BUILD_DIR)/release/bin/$(MINISAT_CORE) $(BUILD_DIR)/debug/bin/$(MINISAT_CORE) $(BUILD_DIR)/profile/bin/$(MINISAT_CORE) $(BUILD_DIR)/dynamic/bin/$(MINISAT_CORE): | $(BUILD_DIR)/release/bin
 	$(ECHO) Linking Binary: $@
-	$(VERB) mkdir -p $(dir $@)
 	$(VERB) $(CXX) $^ $(MINISAT_LDFLAGS) $(LDFLAGS) -o $@
 
 ## Static Library rule
-%/lib/$(MINISAT_SLIB):
+%/lib/$(MINISAT_SLIB): | %/lib
 	$(ECHO) Linking Static Library: $@
-	$(VERB) mkdir -p $(dir $@)
 	$(VERB) $(AR) -rcs $@ $^
 
 ## Shared Library rule
-$(BUILD_DIR)/dynamic/lib/$(MINISAT_DLIB).$(SOMAJOR).$(SOMINOR)$(SORELEASE)\
- $(BUILD_DIR)/dynamic/lib/$(MINISAT_DLIB).$(SOMAJOR)\
- $(BUILD_DIR)/dynamic/lib/$(MINISAT_DLIB):
+$(BUILD_DIR)/dynamic/lib/$(MINISAT_DLIB).$(SOMAJOR).$(SOMINOR)$(SORELEASE): | $(BUILD_DIR)/dynamic/lib
 	$(ECHO) Linking Shared Library: $@
-	$(VERB) mkdir -p $(dir $@)
 	$(VERB) $(CXX) $(MINISAT_LDFLAGS) $(LDFLAGS) -o $@ -shared -Wl,-soname,$(MINISAT_DLIB).$(SOMAJOR) $^
-	$(VERB) ln -sf $(MINISAT_DLIB).$(SOMAJOR).$(SOMINOR)$(SORELEASE) $(BUILD_DIR)/dynamic/lib/$(MINISAT_DLIB).$(SOMAJOR)
-	$(VERB) ln -sf $(MINISAT_DLIB).$(SOMAJOR) $(BUILD_DIR)/dynamic/lib/$(MINISAT_DLIB)
+
+$(BUILD_DIR)/dynamic/lib/$(MINISAT_DLIB).$(SOMAJOR): $(BUILD_DIR)/dynamic/lib/$(MINISAT_DLIB).$(SOMAJOR).$(SOMINOR)$(SORELEASE)
+	$(VERB) ln -sf $(MINISAT_DLIB).$(SOMAJOR).$(SOMINOR)$(SORELEASE) $@
+
+$(BUILD_DIR)/dynamic/lib/$(MINISAT_DLIB): | $(BUILD_DIR)/dynamic/lib/$(MINISAT_DLIB).$(SOMAJOR)
+	$(VERB) ln -sf $(MINISAT_DLIB).$(SOMAJOR) $@
 
 install:	install-headers install-lib install-bin
 install-debug:	install-headers install-lib-debug
 
 install-headers:
 #       Create directories
-	$(INSTALL) -d $(DESTDIR)$(includedir)/minisat
+	$(INSTALL) -d $(DESTDIR)$(includedir)/minisat && \
 	for dir in mtl utils core simp; do \
 	  $(INSTALL) -d $(DESTDIR)$(includedir)/minisat/$$dir ; \
-	done
-#       Install headers
+	done; \
 	for h in $(HDRS) ; do \
 	  $(INSTALL) -m 644 $$h $(DESTDIR)$(includedir)/$$h ; \
 	done
 
 install-lib-debug: $(BUILD_DIR)/debug/lib/$(MINISAT_SLIB)
-	$(INSTALL) -d $(DESTDIR)$(libdir)
+	$(INSTALL) -d $(DESTDIR)$(libdir) && \
 	$(INSTALL) -m 644 $(BUILD_DIR)/debug/lib/$(MINISAT_SLIB) $(DESTDIR)$(libdir)
 
-install-lib: $(BUILD_DIR)/release/lib/$(MINISAT_SLIB) $(BUILD_DIR)/dynamic/lib/$(MINISAT_DLIB).$(SOMAJOR).$(SOMINOR)$(SORELEASE)
-	$(INSTALL) -d $(DESTDIR)$(libdir)
-	$(INSTALL) -m 644 $(BUILD_DIR)/dynamic/lib/$(MINISAT_DLIB).$(SOMAJOR).$(SOMINOR)$(SORELEASE) $(DESTDIR)$(libdir)
-	ln -sf $(MINISAT_DLIB).$(SOMAJOR).$(SOMINOR)$(SORELEASE) $(DESTDIR)$(libdir)/$(MINISAT_DLIB).$(SOMAJOR)
-	ln -sf $(MINISAT_DLIB).$(SOMAJOR) $(DESTDIR)$(libdir)/$(MINISAT_DLIB)
+install-lib: $(BUILD_DIR)/release/lib/$(MINISAT_SLIB) $(BUILD_DIR)/dynamic/lib/$(MINISAT_DLIB)
+	$(INSTALL) -d $(DESTDIR)$(libdir) && \
+	$(INSTALL) -m 644 $(BUILD_DIR)/dynamic/lib/$(MINISAT_DLIB).$(SOMAJOR).$(SOMINOR)$(SORELEASE) $(DESTDIR)$(libdir) && \
+	ln -sf $(MINISAT_DLIB).$(SOMAJOR).$(SOMINOR)$(SORELEASE) $(DESTDIR)$(libdir)/$(MINISAT_DLIB).$(SOMAJOR) && \
+	ln -sf $(MINISAT_DLIB).$(SOMAJOR) $(DESTDIR)$(libdir)/$(MINISAT_DLIB) && \
 	$(INSTALL) -m 644 $(BUILD_DIR)/release/lib/$(MINISAT_SLIB) $(DESTDIR)$(libdir)
 
 install-bin: $(BUILD_DIR)/dynamic/bin/$(MINISAT)
-	$(INSTALL) -d $(DESTDIR)$(bindir)
+	$(INSTALL) -d $(DESTDIR)$(bindir) && \
 	$(INSTALL) -m 755 $(BUILD_DIR)/dynamic/bin/$(MINISAT) $(DESTDIR)$(bindir)
 
 clean:
