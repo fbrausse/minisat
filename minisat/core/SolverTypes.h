@@ -95,7 +95,7 @@ class lbool {
     uint8_t value;
 
 public:
-    explicit lbool(uint8_t v) : value(v) { }
+    constexpr explicit lbool(uint8_t v) : value(v) { }
 
     lbool()       : value(0) { }
     explicit lbool(bool x) : value(!x) { }
@@ -125,9 +125,9 @@ inline lbool toLbool(int   v) { return lbool((uint8_t)v);  }
   #define l_False (lbool((uint8_t)1))
   #define l_Undef (lbool((uint8_t)2))
 #else
-  const lbool l_True ((uint8_t)0);
-  const lbool l_False((uint8_t)1);
-  const lbool l_Undef((uint8_t)2);
+  constexpr lbool l_True ((uint8_t)0);
+  constexpr lbool l_False((uint8_t)1);
+  constexpr lbool l_Undef((uint8_t)2);
 #endif
 
 
