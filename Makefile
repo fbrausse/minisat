@@ -73,6 +73,9 @@ SRCS = $(wildcard minisat/core/*.cc) $(wildcard minisat/simp/*.cc) $(wildcard mi
 HDRS = $(wildcard minisat/mtl/*.h) $(wildcard minisat/core/*.h) $(wildcard minisat/simp/*.h) $(wildcard minisat/utils/*.h)
 OBJS = $(filter-out %Main.o, $(SRCS:.cc=.o))
 
+DIRS = minisat/core minisat/simp minisat/utils
+BUILDS = release profile debug dynamic
+
 r:	$(BUILD_DIR)/release/bin/$(MINISAT)
 d:	$(BUILD_DIR)/debug/bin/$(MINISAT)
 p:	$(BUILD_DIR)/profile/bin/$(MINISAT)
@@ -122,34 +125,33 @@ $(BUILD_DIR)/dynamic/lib/$(MINISAT_DLIB).$(SOMAJOR).$(SOMINOR)$(SORELEASE)\
  $(BUILD_DIR)/dynamic/lib/$(MINISAT_DLIB).$(SOMAJOR)\
  $(BUILD_DIR)/dynamic/lib/$(MINISAT_DLIB):	$(foreach o,$(OBJS),$(BUILD_DIR)/dynamic/$(o))
 
-$(BUILD_DIR)/release $(BUILD_DIR)/profile $(BUILD_DIR)/debug $(BUILD_DIR)/dynamic $(BUILD_DIR)/release/bin:
+$(BUILD_DIR)/release $(BUILD_DIR)/profile $(BUILD_DIR)/debug $(BUILD_DIR)/dynamic $(foreach b,$(BUILDS),$(addprefix $(BUILD_DIR)/$(b)/,$(DIRS) bin)):
 	$(VERB) mkdir -p $@
 
 %/lib:
 	$(VERB) mkdir -p $@
 
 ## Compile rules (these should be unified, buit I have not yet found a way which works in GNU Make)
-$(BUILD_DIR)/release/%.o:	%.cc | $(BUILD_DIR)/release
+$(BUILD_DIR)/release/%.o:	%.cc | $(BUILD_DIR)/release $(addprefix $(BUILD_DIR)/release/,$(DIRS))
 	$(ECHO) Compiling: $@
 	$(VERB) $(CXX) $(MINISAT_CXXFLAGS) $(CXXFLAGS) -c -o $@ $< -MMD -MF $(BUILD_DIR)/release/$*.d
 
-$(BUILD_DIR)/profile/%.o:	%.cc | $(BUILD_DIR)/profile
+$(BUILD_DIR)/profile/%.o:	%.cc | $(BUILD_DIR)/profile $(addprefix $(BUILD_DIR)/profile/,$(DIRS))
 	$(ECHO) Compiling: $@
 	$(VERB) $(CXX) $(MINISAT_CXXFLAGS) $(CXXFLAGS) -c -o $@ $< -MMD -MF $(BUILD_DIR)/profile/$*.d
 
-$(BUILD_DIR)/debug/%.o:	%.cc | $(BUILD_DIR)/debug
+$(BUILD_DIR)/debug/%.o:	%.cc | $(BUILD_DIR)/debug $(addprefix $(BUILD_DIR)/debug/,$(DIRS))
 	$(ECHO) Compiling: $@
 	$(VERB) $(CXX) $(MINISAT_CXXFLAGS) $(CXXFLAGS) -c -o $@ $< -MMD -MF $(BUILD_DIR)/debug/$*.d
 
-$(BUILD_DIR)/dynamic/%.o:	%.cc | $(BUILD_DIR)/dynamic
+$(BUILD_DIR)/dynamic/%.o:	%.cc | $(BUILD_DIR)/dynamic $(addprefix $(BUILD_DIR)/dynamic/,$(DIRS))
 	$(ECHO) Compiling: $@
 	$(VERB) $(CXX) $(MINISAT_CXXFLAGS) $(CXXFLAGS) -c -o $@ $< -MMD -MF $(BUILD_DIR)/dynamic/$*.d
 
 ## Linking rule
-$(BUILD_DIR)/release/bin/$(MINISAT) $(BUILD_DIR)/debug/bin/$(MINISAT) $(BUILD_DIR)/profile/bin/$(MINISAT) $(BUILD_DIR)/dynamic/bin/$(MINISAT)\
-$(BUILD_DIR)/release/bin/$(MINISAT_CORE) $(BUILD_DIR)/debug/bin/$(MINISAT_CORE) $(BUILD_DIR)/profile/bin/$(MINISAT_CORE) $(BUILD_DIR)/dynamic/bin/$(MINISAT_CORE): | $(BUILD_DIR)/release/bin
+%/bin/$(MINISAT) %/bin/$(MINISAT_CORE): | %/bin
 	$(ECHO) Linking Binary: $@
-	$(VERB) $(CXX) $^ $(MINISAT_LDFLAGS) $(LDFLAGS) -o $@
+	$(VERB) $(CXX) $^ $(MINISAT_LDFLAGS) $(LDFLAGS) -o $@ $(MINISAT_LDLIBS) $(LDLIBS)
 
 ## Static Library rule
 %/lib/$(MINISAT_SLIB): | %/lib
